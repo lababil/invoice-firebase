@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc, query, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import './App.css';
 
 function App() {
   const [activeTab, setActiveTab] = useState('create');
   const [invoices, setInvoices] = useState([]);
-  const [customers, setCustomers] = useState([]);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
-  const [customerSearch, setCustomerSearch] = useState('');
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
   
   const [newCustomer, setNewCustomer] = useState({
     customerId: '',
@@ -42,21 +39,7 @@ function App() {
 
   useEffect(() => {
     loadInvoices();
-    loadCustomers();
   }, []);
-
-  const loadCustomers = async () => {
-    try {
-      const querySnapshot = await getDocs(collection(db, 'customers'));
-      const customersList = [];
-      querySnapshot.forEach((doc) => {
-        customersList.push({ id: doc.id, ...doc.data() });
-      });
-      setCustomers(customersList);
-    } catch (error) {
-      console.error('Error loading customers:', error);
-    }
-  };
 
   const loadInvoices = async () => {
     try {
@@ -71,46 +54,19 @@ function App() {
     }
   };
 
-  const saveCustomer = async () => {
-    try {
-      if (!newCustomer.customerId || !newCustomer.customerName) {
-        alert('ID dan Nama customer harus diisi!');
-        return;
-      }
-
-      await addDoc(collection(db, 'customers'), newCustomer);
-      alert('Customer berhasil ditambahkan!');
-      
-      setInvoice({
-        ...invoice,
-        customerId: newCustomer.customerId,
-        customerName: newCustomer.customerName,
-        customerContact: newCustomer.customerContact
-      });
-      
-      setNewCustomer({
-        customerId: '',
-        customerName: '',
-        customerContact: ''
-      });
-      
-      setShowCustomerModal(false);
-      loadCustomers();
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Error menyimpan customer!');
-    }
-  };
-
-  const selectCustomer = (customer) => {
+  const setCustomerData = () => {
     setInvoice({
       ...invoice,
-      customerId: customer.customerId,
-      customerName: customer.customerName,
-      customerContact: customer.customerContact
+      customerId: newCustomer.customerId,
+      customerName: newCustomer.customerName,
+      customerContact: newCustomer.customerContact
     });
-    setSelectedCustomer(customer);
-    setCustomerSearch('');
+    setNewCustomer({
+      customerId: '',
+      customerName: '',
+      customerContact: ''
+    });
+    setShowCustomerModal(false);
   };
 
   const addItem = () => {
@@ -170,7 +126,7 @@ function App() {
   const saveInvoice = async () => {
     try {
       if (!invoice.customerName) {
-        alert('Pilih atau masukkan customer!');
+        alert('Masukkan data customer!');
         return;
       }
 
@@ -183,6 +139,7 @@ function App() {
       await addDoc(collection(db, 'invoices'), invoiceToSave);
       alert('Invoice berhasil disimpan!');
       
+      // Reset form
       setInvoice({
         invoiceNumber: '',
         date: new Date().toISOString().split('T')[0],
@@ -206,7 +163,6 @@ function App() {
         notes: 'BARANG YANG SUDAH DI BELI TIDAK DAPAT DI TUKAR ATAU DIKEMBALIKAN'
       });
       
-      setSelectedCustomer(null);
       loadInvoices();
       setActiveTab('list');
     } catch (error) {
@@ -227,77 +183,19 @@ function App() {
     }
   };
 
-  const printInvoice = (invoice) => {
-    const printWindow = window.open('', '', 'width=800,height=600');
-    const html = `
-      <html>
-        <head>
-          <title>Invoice ${invoice.invoiceNumber}</title>
-          <style>
-            body { font-family: Arial; padding: 20px; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background: #f0f0f0; }
-            .header { margin-bottom: 20px; }
-            .footer { margin-top: 20px; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h2>NOTA PENJUALAN</h2>
-            <p>Kepada Yth: ${invoice.customerName}</p>
-            <p>ID: ${invoice.customerId} | Kontak: ${invoice.customerContact}</p>
-            <p>Tanggal: ${invoice.date} | Jatuh Tempo: ${invoice.dueDate}</p>
-            <p>No: ${invoice.invoiceNumber}</p>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>No</th>
-                <th>Nama Barang</th>
-                <th>Qty</th>
-                <th>Satuan</th>
-                <th>Harga</th>
-                <th>Jumlah</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${invoice.items.map(item => `
-                <tr>
-                  <td>${item.no}</td>
-                  <td>${item.itemName}</td>
-                  <td>${item.quantity}</td>
-                  <td>${item.unit}</td>
-                  <td>Rp ${item.price.toLocaleString('id-ID')}</td>
-                  <td>Rp ${item.total.toLocaleString('id-ID')}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-          <div class="footer">
-            <p>Subtotal: Rp ${invoice.subtotal.toLocaleString('id-ID')}</p>
-            <p>Diskon: Rp ${invoice.discount.toLocaleString('id-ID')}</p>
-            <p>DP: Rp ${invoice.downPayment.toLocaleString('id-ID')}</p>
-            <p><strong>TOTAL: Rp ${invoice.grandTotal.toLocaleString('id-ID')}</strong></p>
-            <p>${invoice.notes}</p>
-          </div>
-        </body>
-      </html>
-    `;
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.print();
+  const printInvoice = (inv) => {
+    const printContent = document.getElementById('print-area-' + inv.id);
+    const originalContent = document.body.innerHTML;
+    document.body.innerHTML = printContent.innerHTML;
+    window.print();
+    document.body.innerHTML = originalContent;
+    window.location.reload();
   };
-
-  const filteredCustomers = customers.filter(customer => 
-    customer.customerId?.toLowerCase().includes(customerSearch.toLowerCase()) ||
-    customer.customerName?.toLowerCase().includes(customerSearch.toLowerCase())
-  );
 
   return (
     <div className="App">
       <header className="App-header">
-        <h1>📋 Sistem Invoice Online</h1>
+        <h1>Sistem Invoice Online</h1>
         <div className="tabs">
           <button 
             className={activeTab === 'create' ? 'active' : ''} 
@@ -311,12 +209,6 @@ function App() {
           >
             Daftar Invoice
           </button>
-          <button 
-            className={activeTab === 'customers' ? 'active' : ''} 
-            onClick={() => setActiveTab('customers')}
-          >
-            Data Customer
-          </button>
         </div>
       </header>
 
@@ -326,36 +218,13 @@ function App() {
           
           <div className="customer-section">
             <h3>Data Customer</h3>
-            <div className="customer-controls">
-              <button onClick={() => setShowCustomerModal(true)} className="btn-primary">
-                + Customer Baru
-              </button>
-              <input 
-                type="text"
-                placeholder="Cari customer (ID atau Nama)..."
-                value={customerSearch}
-                onChange={(e) => setCustomerSearch(e.target.value)}
-              />
-            </div>
+            <button onClick={() => setShowCustomerModal(true)} className="btn-primary">
+              Input Data Customer
+            </button>
 
-            {customerSearch && (
-              <div className="customer-dropdown">
-                {filteredCustomers.map(customer => (
-                  <div 
-                    key={customer.id} 
-                    className="customer-item"
-                    onClick={() => selectCustomer(customer)}
-                  >
-                    <strong>{customer.customerId}</strong> - {customer.customerName}
-                    <span className="contact">{customer.customerContact}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {selectedCustomer && (
+            {invoice.customerName && (
               <div className="selected-customer">
-                <h4>Customer Terpilih:</h4>
+                <h4>Customer:</h4>
                 <p>ID: {invoice.customerId}</p>
                 <p>Nama: {invoice.customerName}</p>
                 <p>Kontak: {invoice.customerContact}</p>
@@ -388,7 +257,7 @@ function App() {
                 type="text" 
                 value={invoice.invoiceNumber}
                 onChange={(e) => setInvoice({...invoice, invoiceNumber: e.target.value})}
-                placeholder="Auto generate jika kosong"
+                placeholder="Auto generate"
               />
             </div>
 
@@ -409,13 +278,13 @@ function App() {
           <table className="items-table">
             <thead>
               <tr>
-                <th width="5%">No</th>
-                <th width="35%">Nama Barang</th>
-                <th width="10%">Qty</th>
-                <th width="10%">Satuan</th>
-                <th width="15%">Harga</th>
-                <th width="15%">Jumlah</th>
-                <th width="10%">Aksi</th>
+                <th>No</th>
+                <th>Nama Barang</th>
+                <th>Qty</th>
+                <th>Satuan</th>
+                <th>Harga</th>
+                <th>Jumlah</th>
+                <th>Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -427,11 +296,148 @@ function App() {
                       type="text"
                       value={item.itemName}
                       onChange={(e) => updateItem(index, 'itemName', e.target.value)}
-                      placeholder="Nama barang"
                     />
                   </td>
                   <td>
                     <input 
                       type="number"
                       value={item.quantity}
-                      onChange={(e) =>
+                      onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 0)}
+                    />
+                  </td>
+                  <td>
+                    <input 
+                      type="text"
+                      value={item.unit}
+                      onChange={(e) => updateItem(index, 'unit', e.target.value)}
+                    />
+                  </td>
+                  <td>
+                    <input 
+                      type="number"
+                      value={item.price}
+                      onChange={(e) => updateItem(index, 'price', parseInt(e.target.value) || 0)}
+                    />
+                  </td>
+                  <td>Rp {item.total.toLocaleString('id-ID')}</td>
+                  <td>
+                    <button onClick={() => removeItem(index)} className="btn-remove">
+                      X
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <button onClick={addItem} className="btn-add">+ Tambah Item</button>
+
+          <div className="summary">
+            <div className="summary-row">
+              <span>Subtotal:</span>
+              <span>Rp {invoice.subtotal.toLocaleString('id-ID')}</span>
+            </div>
+            <div className="summary-row">
+              <span>Diskon:</span>
+              <input 
+                type="number"
+                value={invoice.discount}
+                onChange={(e) => {
+                  const discount = parseInt(e.target.value) || 0;
+                  const grandTotal = invoice.subtotal - discount - invoice.downPayment;
+                  setInvoice({...invoice, discount, grandTotal});
+                }}
+              />
+            </div>
+            <div className="summary-row">
+              <span>DP:</span>
+              <input 
+                type="number"
+                value={invoice.downPayment}
+                onChange={(e) => {
+                  const downPayment = parseInt(e.target.value) || 0;
+                  const grandTotal = invoice.subtotal - invoice.discount - downPayment;
+                  setInvoice({...invoice, downPayment, grandTotal});
+                }}
+              />
+            </div>
+            <div className="summary-row total">
+              <span>TOTAL:</span>
+              <span>Rp {invoice.grandTotal.toLocaleString('id-ID')}</span>
+            </div>
+          </div>
+
+          <button onClick={saveInvoice} className="btn-primary" style={{marginTop: '20px', width: '100%'}}>
+            Simpan Invoice
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'list' && (
+        <div className="invoice-list">
+          <h2>Daftar Invoice</h2>
+          {invoices.length === 0 ? (
+            <div className="empty-state">
+              <h3>Belum ada invoice</h3>
+              <p>Buat invoice pertama Anda</p>
+            </div>
+          ) : (
+            invoices.map(inv => (
+              <div key={inv.id} className="invoice-card">
+                <div id={`print-area-${inv.id}`} style={{display: 'none'}}>
+                  <h2>NOTA PENJUALAN</h2>
+                  <p>No: {inv.invoiceNumber}</p>
+                  <p>Customer: {inv.customerName}</p>
+                  <p>Total: Rp {inv.grandTotal?.toLocaleString('id-ID')}</p>
+                </div>
+                <h3>Invoice #{inv.invoiceNumber}</h3>
+                <div className="invoice-info">
+                  <p><strong>Customer:</strong> {inv.customerName}</p>
+                  <p><strong>Tanggal:</strong> {inv.date}</p>
+                  <p><strong>Total:</strong> Rp {inv.grandTotal?.toLocaleString('id-ID')}</p>
+                </div>
+                <div className="invoice-actions">
+                  <button onClick={() => printInvoice(inv)} className="btn-print">
+                    Print
+                  </button>
+                  <button onClick={() => deleteInvoice(inv.id)} className="btn-delete">
+                    Hapus
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {showCustomerModal && (
+        <div className="modal">
+          <div className="modal-content">
+            <h2>Input Data Customer</h2>
+            <div className="modal-form">
+              <input 
+                type="text"
+                placeholder="ID Customer"
+                value={newCustomer.customerId}
+                onChange={(e) => setNewCustomer({...newCustomer, customerId: e.target.value})}
+              />
+              <input 
+                type="text"
+                placeholder="Nama Customer"
+                value={newCustomer.customerName}
+                onChange={(e) => setNewCustomer({...newCustomer, customerName: e.target.value})}
+              />
+              <input 
+                type="text"
+                placeholder="Kontak"
+                value={newCustomer.customerContact}
+                onChange={(e) => setNewCustomer({...newCustomer, customerContact: e.target.value})}
+              />
+            </div>
+            <div className="modal-buttons">
+              <button onClick={() => setShowCustomerModal(false)} className="btn-cancel">
+                Batal
+              </button>
+              <button onClick={setCustomerData} className="btn-save">
+                Simpan
+              
