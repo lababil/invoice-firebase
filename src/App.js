@@ -40,53 +40,6 @@ function App() {
     notes: 'BARANG YANG SUDAH DI BELI TIDAK DAPAT DI TUKAR ATAU DIKEMBALIKAN'
   });
 
-  // Lanjutkan dengan kode lengkap dari sebelumnya...
-}
-
-export default App;
-import React, { useState, useEffect } from 'react';
-import { db } from './firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc, query, where } from 'firebase/firestore';
-import './App.css';
-
-function App() {
-  const [activeTab, setActiveTab] = useState('create');
-  const [invoices, setInvoices] = useState([]);
-  const [customers, setCustomers] = useState([]);
-  const [showCustomerModal, setShowCustomerModal] = useState(false);
-  const [customerSearch, setCustomerSearch] = useState('');
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
-  
-  // State untuk customer baru
-  const [newCustomer, setNewCustomer] = useState({
-    customerId: '',
-    customerName: '',
-    customerContact: ''
-  });
-
-  const [invoice, setInvoice] = useState({
-    invoiceNumber: '',
-    date: new Date().toISOString().split('T')[0],
-    dueDate: '',
-    warehouse: 'GD JBI',
-    customerId: '',
-    customerName: '',
-    customerContact: '',
-    items: [{
-      no: 1,
-      itemName: '',
-      quantity: 1,
-      unit: 'pcs',
-      price: 0,
-      total: 0
-    }],
-    subtotal: 0,
-    discount: 0,
-    downPayment: 0,
-    grandTotal: 0,
-    notes: 'BARANG YANG SUDAH DI BELI TIDAK DAPAT DI TUKAR ATAU DIKEMBALIKAN'
-  });
-
   useEffect(() => {
     loadInvoices();
     loadCustomers();
@@ -125,19 +78,9 @@ function App() {
         return;
       }
 
-      // Check if customer ID already exists
-      const q = query(collection(db, 'customers'), where('customerId', '==', newCustomer.customerId));
-      const querySnapshot = await getDocs(q);
-      
-      if (!querySnapshot.empty) {
-        alert('ID Customer sudah ada!');
-        return;
-      }
-
       await addDoc(collection(db, 'customers'), newCustomer);
       alert('Customer berhasil ditambahkan!');
       
-      // Set customer to invoice
       setInvoice({
         ...invoice,
         customerId: newCustomer.customerId,
@@ -145,7 +88,6 @@ function App() {
         customerContact: newCustomer.customerContact
       });
       
-      // Reset form
       setNewCustomer({
         customerId: '',
         customerName: '',
@@ -241,7 +183,6 @@ function App() {
       await addDoc(collection(db, 'invoices'), invoiceToSave);
       alert('Invoice berhasil disimpan!');
       
-      // Reset form
       setInvoice({
         invoiceNumber: '',
         date: new Date().toISOString().split('T')[0],
@@ -288,7 +229,7 @@ function App() {
 
   const printInvoice = (invoice) => {
     const printWindow = window.open('', '', 'width=800,height=600');
-    printWindow.document.write(`
+    const html = `
       <html>
         <head>
           <title>Invoice ${invoice.invoiceNumber}</title>
@@ -299,21 +240,15 @@ function App() {
             th { background: #f0f0f0; }
             .header { margin-bottom: 20px; }
             .footer { margin-top: 20px; }
-            .customer-info { margin: 10px 0; }
           </style>
         </head>
         <body>
           <div class="header">
             <h2>NOTA PENJUALAN</h2>
-            <div class="customer-info">
-              <p><strong>Kepada Yth:</strong></p>
-              <p>ID: ${invoice.customerId}</p>
-              <p>Nama: ${invoice.customerName}</p>
-              <p>Kontak: ${invoice.customerContact}</p>
-            </div>
+            <p>Kepada Yth: ${invoice.customerName}</p>
+            <p>ID: ${invoice.customerId} | Kontak: ${invoice.customerContact}</p>
             <p>Tanggal: ${invoice.date} | Jatuh Tempo: ${invoice.dueDate}</p>
-            <p>No. Invoice: ${invoice.invoiceNumber}</p>
-            <p>Gudang: ${invoice.warehouse}</p>
+            <p>No: ${invoice.invoiceNumber}</p>
           </div>
           <table>
             <thead>
@@ -344,18 +279,19 @@ function App() {
             <p>Diskon: Rp ${invoice.discount.toLocaleString('id-ID')}</p>
             <p>DP: Rp ${invoice.downPayment.toLocaleString('id-ID')}</p>
             <p><strong>TOTAL: Rp ${invoice.grandTotal.toLocaleString('id-ID')}</strong></p>
-            <p style="margin-top: 20px;">${invoice.notes}</p>
+            <p>${invoice.notes}</p>
           </div>
         </body>
       </html>
-    `);
+    `;
+    printWindow.document.write(html);
     printWindow.document.close();
     printWindow.print();
   };
 
   const filteredCustomers = customers.filter(customer => 
-    customer.customerId.toLowerCase().includes(customerSearch.toLowerCase()) ||
-    customer.customerName.toLowerCase().includes(customerSearch.toLowerCase())
+    customer.customerId?.toLowerCase().includes(customerSearch.toLowerCase()) ||
+    customer.customerName?.toLowerCase().includes(customerSearch.toLowerCase())
   );
 
   return (
@@ -384,7 +320,7 @@ function App() {
         </div>
       </header>
 
-      {activeTab === 'create' ? (
+      {activeTab === 'create' && (
         <div className="invoice-form">
           <h2>Buat Invoice Baru</h2>
           
@@ -483,218 +419,19 @@ function App() {
               </tr>
             </thead>
             <tbody>
-.App {
-  min-height: 100vh;
-  background: #f5f5f5;
-}
-
-.App-header {
-  background: #2c3e50;
-  color: white;
-  padding: 20px;
-  text-align: center;
-}
-
-.tabs {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 20px;
-}
-
-.tabs button {
-  padding: 10px 20px;
-  border: none;
-  background: #34495e;
-  color: white;
-  cursor: pointer;
-  border-radius: 5px;
-}
-
-.tabs button.active {
-  background: #3498db;
-}
-
-.invoice-form {
-  max-width: 1200px;
-  margin: 20px auto;
-  padding: 30px;
-  background: white;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-.customer-section {
-  background: #f9f9f9;
-  padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-}
-
-.customer-controls {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.btn-primary {
-  background: #3498db;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.customer-dropdown {
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.customer-item {
-  padding: 10px;
-  cursor: pointer;
-  border-bottom: 1px solid #eee;
-}
-
-.customer-item:hover {
-  background: #f0f0f0;
-}
-
-.selected-customer {
-  background: #e8f4f8;
-  padding: 15px;
-  border-radius: 5px;
-  margin-top: 10px;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 15px;
-  margin-bottom: 20px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.form-group label {
-  font-weight: bold;
-  margin-bottom: 5px;
-}
-
-.form-group input, .form-group select {
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
-.items-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 20px;
-}
-
-.items-table th {
-  background: #34495e;
-  color: white;
-  padding: 10px;
-  text-align: left;
-}
-
-.items-table td {
-  padding: 8px;
-  border: 1px solid #ddd;
-}
-
-.items-table input {
-  width: 100%;
-  padding: 5px;
-  border: 1px solid #ddd;
-  border-radius: 3px;
-}
-
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: white;
-  padding: 30px;
-  border-radius: 10px;
-  width: 500px;
-  max-width: 90%;
-}
-
-.invoice-list {
-  max-width: 1200px;
-  margin: 20px auto;
-  padding: 20px;
-}
-
-.invoice-card {
-  background: white;
-  padding: 20px;
-  margin-bottom: 15px;
-  border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.invoice-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.btn-print {
-  background: #27ae60;
-  color: white;
-  border: none;
-  padding: 8px 15px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.btn-delete {
-  background: #e74c3c;
-  color: white;
-  border: none;
-  padding: 8px 15px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.summary {
-  background: #f9f9f9;
-  padding: 20px;
-  border-radius: 8px;
-  margin-top: 20px;
-}
-
-.summary-row {
-  display: flex;
-  justify-content: space-between;
-  margin: 10px 0;
-}
-
-.summary-row.total {
-  font-size: 1.2em;
-  font-weight: bold;
-  color: #2c3e50;
-  border-top: 2px solid #ddd;
-  padding-top: 10px;
-}
+              {invoice.items.map((item, index) => (
+                <tr key={index}>
+                  <td>{item.no}</td>
+                  <td>
+                    <input 
+                      type="text"
+                      value={item.itemName}
+                      onChange={(e) => updateItem(index, 'itemName', e.target.value)}
+                      placeholder="Nama barang"
+                    />
+                  </td>
+                  <td>
+                    <input 
+                      type="number"
+                      value={item.quantity}
+                      onChange={(e) =>
