@@ -140,6 +140,9 @@ function App() {
 
       await addDoc(collection(db, 'invoices'), invoiceToSave);
       alert('Invoice berhasil disimpan!');
+
+      // Cetak invoice setelah simpan
+      window.print();
       
       setInvoice({
         invoiceNumber: '',
