@@ -364,7 +364,7 @@ function App() {
           </div>
 
           <button onClick={saveInvoice} className="btn-primary" style={{marginTop: '20px', width: '100%'}}>
-            Simpan Invoice
+            Simpan & print
           </button>
         </div>
       )}
