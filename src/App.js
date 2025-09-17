@@ -45,8 +45,8 @@ function App() {
     try {
       const querySnapshot = await getDocs(collection(db, 'invoices'));
       const invoicesList = [];
-      querySnapshot.forEach((doc) => {
-        invoicesList.push({ id: doc.id, ...doc.data() });
+      querySnapshot.forEach((docSnapshot) => {
+        invoicesList.push({ id: docSnapshot.id, ...docSnapshot.data() });
       });
       setInvoices(invoicesList);
     } catch (error) {
