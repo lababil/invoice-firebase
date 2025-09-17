@@ -89,7 +89,9 @@ function App() {
       return;
     }
     const newItems = invoice.items.filter((_, i) => i !== index);
-    newItems.forEach((item, i) => item.no = i + 1);
+    newItems.forEach((item, i) => {
+      item.no = i + 1;
+    });
     updateTotals(newItems);
   };
 
@@ -120,7 +122,7 @@ function App() {
     const date = new Date();
     const random = Math.floor(Math.random() * 10000).toString().padStart(5, '0');
     const dateStr = date.toISOString().slice(2,10).replace(/-/g, '');
-    return `${random}/SS/JBI/${dateStr}`;
+    return random + '/SS/JBI/' + dateStr;
   };
 
   const saveInvoice = async () => {
@@ -139,7 +141,6 @@ function App() {
       await addDoc(collection(db, 'invoices'), invoiceToSave);
       alert('Invoice berhasil disimpan!');
       
-      // Reset form
       setInvoice({
         invoiceNumber: '',
         date: new Date().toISOString().split('T')[0],
@@ -184,12 +185,7 @@ function App() {
   };
 
   const printInvoice = (inv) => {
-    const printContent = document.getElementById('print-area-' + inv.id);
-    const originalContent = document.body.innerHTML;
-    document.body.innerHTML = printContent.innerHTML;
     window.print();
-    document.body.innerHTML = originalContent;
-    window.location.reload();
   };
 
   return (
@@ -384,12 +380,6 @@ function App() {
           ) : (
             invoices.map(inv => (
               <div key={inv.id} className="invoice-card">
-                <div id={`print-area-${inv.id}`} style={{display: 'none'}}>
-                  <h2>NOTA PENJUALAN</h2>
-                  <p>No: {inv.invoiceNumber}</p>
-                  <p>Customer: {inv.customerName}</p>
-                  <p>Total: Rp {inv.grandTotal?.toLocaleString('id-ID')}</p>
-                </div>
                 <h3>Invoice #{inv.invoiceNumber}</h3>
                 <div className="invoice-info">
                   <p><strong>Customer:</strong> {inv.customerName}</p>
@@ -440,4 +430,13 @@ function App() {
               </button>
               <button onClick={setCustomerData} className="btn-save">
                 Simpan
-              
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default App;
